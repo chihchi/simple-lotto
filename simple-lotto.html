@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Simple Lotto</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-2.1.4.js" type="text/javascript"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+
+    <!-- bootstrap-confirmation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-confirmation/1.0.5/bootstrap-confirmation.min.js" type="text/javascript"></script>
+    <script type="text/javascript">
+
+        var prefix = 'simple-lotto.';
+        var version = 1.0;
+        var all_numbers = ['1','2','3','4'];
+        var awards = [];
+        var sponsors = [{name:'贊助商一', priority:1},
+                        {name:'贊助商二', priority:2}];
+        var awards_name = [{name:'獎項一',sponsor:'贊助商一', quantity:5},
+                        {name:'獎項二',sponsor:'贊助商一', quantity:10},
+                        {name:'獎項三',sponsor:'贊助商二', quantity:15},
+                        {name:'獎項四',sponsor:'贊助商二', quantity:20}];
+
+        function onLoad() {
+            btnLotto.addEventListener("click", lotto);
+            // btnUndo.addEventListener("click", undo);
+            // btnLottoOne.addEventListener("click", lottoOne);
+            // btnUndoOne.addEventListener("click", undoOne);
+
+            if (typeof(window.localStorage[prefix + "version"]) == 'undefined' || parseFloat(window.localStorage[prefix + "version"]) < version) {
+                window.localStorage.clear();
+                window.localStorage[prefix + "version"] = version;
+            }
+            if (typeof(window.localStorage["all_numbers"]) != 'undefined') {
+                all_numbers = JSON.parse(window.localStorage["all_numbers"]);
+            }
+            if (typeof(window.localStorage["awards"]) != 'undefined') {
+                awards = JSON.parse(window.localStorage["awards"]);
+            }
+            showAllAwards();
+            showAllNumbers();
+            showAwardsName();
+
+            $('#btnUndo').confirmation({
+                placement: 'bottom',
+                btnOkLabel: 'Yes',
+                btnCancelLabel: 'No',
+                onConfirm: undo
+            });
+            $('#btnLottoOne').confirmation({
+                placement: 'bottom',
+                btnOkLabel: 'Yes',
+                btnCancelLabel: 'No',
+                onConfirm: lottoOne
+            });
+            $('#btnUndoOne').confirmation({
+                placement: 'bottom',
+                btnOkLabel: 'Yes',
+                btnCancelLabel: 'No',
+                onConfirm: undoOne
+            });
+        }
+
+        function getRandnum(min, max) {
+            return parseInt(Math.random() * (max - min + 1));
+        }
+
+        function saveData() {
+            window.localStorage[prefix + "all_numbers"] = JSON.stringify(all_numbers);
+            window.localStorage[prefix + "awards"] = JSON.stringify(awards);
+        }
+
+        function showAllAwards() {
+            $("#lotto_awards").html("");
+            for (var i = 0; i < awards.length; i++) {
+                $("#lotto_awards").append(arrayToHtml(parseInt(i), awards[i].name, awards[i].numbers));
+                // $("#lotto_awards #award" + idx).slideUp(0).delay(2000).fadeIn(400);
+            }
+        }
+
+        function showAllNumbers() {
+            all_numbers.sort();
+            $("#lotto_numbers").html(arrayToHtml("0", "即將中獎名單", all_numbers));
+        }
+
+        function arrayToHtml(idx, headings, o) {
+            var html = '<div id="award' + idx + '" class="panel panel-primary"><div class="panel-heading">' + headings + '</div><div class="panel-body">';
+            for (var i = 0; i < o.length; i++) {
+                html += '<h1><span id="number' + i + '" class="label label-warning" style="float: left;margin: 1px;">' + o[i] + '</span></h1>';
+            }
+            html += '</div></div><p>'
+            return html;
+        }
+
+        function getNumbers(count, all_numbers) {
+            var numbers = [];
+            for (var i = 0; i < count; i++) {
+                if (all_numbers.length == 0)
+                    break;
+                var idx = getRandnum(0, all_numbers.length - 1);
+                var number = all_numbers.splice(idx, 1)[0];
+                numbers.push(number);
+            }
+            return numbers;
+        }
+
+        var lotto = function lotto() {
+            if ($("#award_name").val().length == 0) {
+                showAlert('請輸入獎項名稱');
+                return;
+            }
+            if (!$.isNumeric($("#award_number").val())) {
+                showAlert('請輸入數量');
+                return;
+            }
+            var numbers = getNumbers(parseInt($("#award_number").val()), all_numbers);
+            if (numbers.length == 0)
+                return;
+            // numbers.sort(function(a, b) {
+            //     return parseInt(a) - parseInt(b);
+            // });
+            var o = {name:$("#award_name").val(), numbers:numbers};
+            awards.push(o);
+            var awards_idx = awards.length - 1;
+            saveData();
+            showAllAwards();
+            showAllNumbers();
+            $("#lotto_awards #award" + awards_idx).slideUp(0).delay(2000).fadeIn(400);
+            $("#lotto_numbers").slideUp(0).delay(2000).fadeIn(400);
+        }
+
+        function undo() {
+            if (awards.length == 0)
+                return;
+            var award = awards.pop();
+            for (var i = 0; i < award.numbers.length; i++) {
+                all_numbers.push(award.numbers[i]);
+            };
+            saveData();
+            showAllAwards();
+            showAllNumbers();
+        }
+
+        var lottoOne = function lottoOne() {
+            var numbers = getNumbers(1, all_numbers);
+            if (numbers.length == 0)
+                return;
+            if (awards.length == 0)
+                return;
+            var awards_idx = awards.length - 1;
+            awards[awards_idx].numbers.push(numbers[0]);
+            var number_idx = awards[awards_idx].numbers.length - 1;
+            saveData();
+            showAllAwards();
+            showAllNumbers();
+            $("#lotto_awards #award" + awards_idx + " #number" + number_idx).slideUp(0).delay(2000).fadeIn(400);
+            $("#lotto_numbers").slideUp(0).delay(2000).fadeIn(400);
+        }
+
+        var undoOne = function undoOne() {
+            if (awards.length == 0)
+                return;
+            var awards_idx = awards.length - 1;
+            if (awards[awards_idx].numbers.length == 0)
+                return;
+            var number = awards[awards_idx].numbers.pop();
+            all_numbers.push(number);
+            saveData();
+            showAllAwards();
+            showAllNumbers();
+        }
+
+        function showAlert(message) {
+            var html = '<div class="alert alert-warning">';
+                html += '<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>';
+                html += '<strong>' + message + '</strong>';
+                html += '</div>';
+            $('#alert').html(html);
+        }
+
+        function showAwardsName() {
+            var html = '';
+            sponsors.sort(function(a, b) {
+                return parseFloat(a.priority) - parseFloat(b.priority);
+            });
+            for (var i = 0; i < sponsors.length; i++) {
+                html += '<li class="dropdown-header"><h2><span class="label label-default">' + sponsors[i].name + '</span></h2></li>';
+                for (var j = 0; j < awards_name.length; j++) {
+                    if (awards_name[j].sponsor != sponsors[i].name)
+                        continue;
+                    html += '<li><a href="javascript:showAwardName(\'' + awards_name[j].name + '\', ' + awards_name[j].quantity + ')">' + awards_name[j].name + ' <span class="badge">' + awards_name[j].quantity + '</span></a></li>';
+                }
+            }
+            $('#awards_name').html(html);
+        }
+
+        function showAwardName(name, quantity) {
+            $('#award_name').val(name);
+            $('#award_number').val(quantity);
+        }
+    </script>
+</head>
+<body onload="onLoad()">
+<div class="jumbotron">
+<h1>保證中獎</h1>
+    <div class="panel panel-default">
+        <div id="lotto_awards"></div><p>
+
+        <div class="btn-group">
+          <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            獎項 <span class="caret"></span>
+          </button>
+          <ul class="dropdown-menu" id="awards_name"></ul>
+        </div>
+
+        <input type="text" id="award_name" class="" aria-describedby="" placeholder="獎項名稱" value="" size="25"></input>
+        <input type="text" id="award_number" class="" aria-describedby="" min="1" placeholder="數量" value="" size="5"></input>
+        <button type="button" id="btnLotto" class="btn btn-primary"><span class="glyphicon glyphicon-ok" aria-hidden="true"></span></button>
+
+        <button type="button" id="btnUndo" class="btn btn-primary"><span class="glyphicon glyphicon-remove" aria-hidden="true"></span></button>
+        <button type="button" id="btnLottoOne" class="btn btn-default"><span class="glyphicon glyphicon-plus" aria-hidden="true"></span></button>
+        <button type="button" id="btnUndoOne" class="btn btn-default"><span class="glyphicon glyphicon-minus" aria-hidden="true"></span></button>
+
+        <div id="alert"></div>
+
+        <div id="lotto_numbers"></div><p>
+    </div>
+</div>
+</body>
+</html>
